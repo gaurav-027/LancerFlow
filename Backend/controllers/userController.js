@@ -10,31 +10,37 @@ const createVerificationCode = () => Math.floor(100000 + Math.random() * 900000)
 async function sendVerificationEmail({ to, username, code }) {
     const {
         SMTP_HOST,
-        SMTP_PORT = "587",
+        SMTP_PORT ,
         SMTP_USER,
         SMTP_PASS,
         SMTP_FROM,
-        SMTP_SERVICE,
-        SMTP_SECURE
     } = process.env;
 
-    if((!SMTP_HOST && !SMTP_SERVICE) || !SMTP_USER || !SMTP_PASS){
+    if(!SMTP_HOST || !SMTP_USER || !SMTP_PASS){
         return { sent: false, reason: "missing_config" };
     }
 
     try {
-        const port = Number(SMTP_PORT);
         const transporter = nodemailer.createTransport({
-            ...(SMTP_SERVICE ? { service: SMTP_SERVICE } : { host: SMTP_HOST, port }),
-            secure: SMTP_SECURE ? SMTP_SECURE === "true" : port === 465,
+            host: SMTP_HOST,
+            port : Number(SMTP_PORT),
+            secure:false,
             auth: {
                 user: SMTP_USER,
                 pass: SMTP_PASS
             }
         });
 
+        transporter.verify((error, success) => {
+            if (error) {
+                console.error("Email transporter verification failed:", error.message);
+            } else {
+                console.log("Email transporter is ready to send messages");
+            }
+        });
+
         await transporter.sendMail({
-            from: SMTP_FROM || SMTP_USER,
+            from: SMTP_USER,
             to,
             subject: "Verify your LancerFlow email",
             text: `Hi ${username || "there"}, your LancerFlow email verification code is ${code}. This code expires in 10 minutes.`,
